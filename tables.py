@@ -5,8 +5,9 @@ from sqlalchemy.sql.schema import ForeignKey
 
 import json
 import logging
-logging.basicConfig(filename='sql.log', encoding='utf-8')
+
 logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+logging.getLogger("sqlalchemy.engine").addHandler(logging.FileHandler('sql.log', mode='w'))
 
 BaseTable = declarative_base()
 
@@ -29,8 +30,11 @@ class PlaySession(BaseTable):
     id = Column(Integer, primary_key=True, autoincrement=True)
     start_time = Column(DateTime, index=True)
     end_time = Column(DateTime, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey(User.id))
     user = relationship(User)
+
+    def __repr__(self):
+        return f"{self.user.username} played from {self.start_time} to {self.end_time}"
 
 
 class UserDeath(BaseTable):
@@ -38,7 +42,7 @@ class UserDeath(BaseTable):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     time = Column(DateTime, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey(User.id))
     user = relationship(User)
     message = Column(String)
 
