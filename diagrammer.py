@@ -57,6 +57,8 @@ class Month():
         self.week_width = 1100
         self.gap_between_weeks = 10
 
+        self.left_right_margins = 10
+
         self.weeks: list[Week] = []
         for i in range(0, number_of_weeks):
             self.weeks.append(
@@ -109,11 +111,12 @@ class Month():
 
     def render(self) -> drawSvg.Drawing:
         # might want to add left and right margins
-        drawing = drawSvg.Drawing(self.week_width, self.height)
+        drawing = drawSvg.Drawing(self.week_width + self.left_right_margins * 2,
+                                  self.height)
         drawing.append(
             drawSvg.Text(self.name,
                          self.name_font_size,
-                         0,
+                         self.left_right_margins,
                          self.height - self.name_height,
                          fill="black"))
 
@@ -140,7 +143,7 @@ class Month():
         for week in self.weeks:
             week_group = week.render()
             week_group.args[
-                "transform"] = f"translate(0, {-(self.height - amount_of_page_filled) + self.week_height})"
+                "transform"] = f"translate({self.left_right_margins}, {-(self.height - amount_of_page_filled) + self.week_height})"
             drawing.append(week_group)
             amount_of_page_filled += self.week_height + self.gap_between_weeks
         return drawing
