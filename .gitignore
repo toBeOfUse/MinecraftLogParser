@@ -1,5 +1,5 @@
 logs/*.log*
-
+output/*.svg
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
