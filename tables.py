@@ -52,7 +52,7 @@ class UserDeath(BaseTable):
     message = Column(String)
 
     def __repr__(self):
-        return f"[{self.time.replace(tzinfo=timezone.utc).astimezone()}: {self.message}"
+        return f"[{self.time}: {self.message}"
 
 
 class VillagerDeath(BaseTable):
