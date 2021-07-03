@@ -25,8 +25,7 @@ def get_user_by_uuid(uuid, session):
 def parse(engine):
     log_files = list(
         Path('./logs/').glob("*.log.gz")) + [Path("./logs/latest.log")]
-    print("DEBUG MODE: NOT GOING THROUGH ALL FILES")
-    for file in list(log_files)[:5]:
+    for file in list(log_files):
         if file.name == "latest.log":
             now = datetime.utcnow()
             year, month, day = now.year, now.month, now.day
@@ -40,8 +39,9 @@ def parse(engine):
                 try:
                     log_data = gzip.decompress(data_file.read()).decode("utf-8")
                 except EOFError:
-                    print("warning: could not open", file,
-                          "it is most likely corrupted")
+                    print(
+                        f"warning: could not open {file}; it is most likely corrupted"
+                    )
                     continue
         else:
             with open(file, "r") as data_file:
