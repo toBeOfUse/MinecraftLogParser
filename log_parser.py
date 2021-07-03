@@ -6,6 +6,7 @@ import json
 
 from death_messages import is_death_message
 from tables import User, UserDeath, VillagerDeath, PlaySession
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DBSession
 
@@ -54,13 +55,15 @@ def parse(engine):
             hour, minute, second = [
                 int(x) for x in time_parser.match(time).group(1, 2, 3)
             ]
+            # astimezone with no arguments converts the datetime object to the system
+            # local timezone
             timestamp = datetime(year,
                                  month,
                                  day,
                                  hour,
                                  minute,
                                  second,
-                                 tzinfo=timezone.utc)
+                                 tzinfo=timezone.utc).astimezone()
             with DBSession(engine) as session:
                 if re.match(r"^User Authenticator #\d+/INFO$", source):
                     uuid_declaration = re.match(
