@@ -1,4 +1,4 @@
-from datetime import timezone
+from datetime import timedelta, timezone
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, create_engine
 from sqlalchemy.sql.schema import ForeignKey
@@ -7,7 +7,8 @@ import json
 import logging
 
 logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
-logging.getLogger("sqlalchemy.engine").addHandler(logging.FileHandler('sql.log', mode='w'))
+logging.getLogger("sqlalchemy.engine").addHandler(
+    logging.FileHandler('sql.log', mode='w'))
 
 BaseTable = declarative_base()
 
@@ -32,6 +33,10 @@ class PlaySession(BaseTable):
     end_time = Column(DateTime, index=True)
     user_id = Column(Integer, ForeignKey(User.id))
     user = relationship(User)
+
+    @property
+    def length(self) -> timedelta:
+        return self.end_time - self.start_time
 
     def __repr__(self):
         return f"{self.user.username} played from {self.start_time} to {self.end_time}"
