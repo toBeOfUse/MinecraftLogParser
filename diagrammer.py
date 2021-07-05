@@ -7,6 +7,7 @@ from math import ceil, floor
 from typing import Union
 from collections import defaultdict
 from random import random
+from xml.sax.saxutils import unescape
 
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import or_, and_
@@ -181,18 +182,23 @@ class Week():
         self.line_width = 3
         self.stats_width = 200
         self.stats_font_size = 15
+        self.stats_box_width = 100
+        self.stats_box_height = 20
+        self.stats_box_spacing = 5
 
         self.play_sessions: list[PlaySession] = []
         self.user_deaths: list[UserDeath] = []
         self.villager_deaths: list[VillagerDeath] = []
+        self.user_ids = set()
 
     @property
     def length(self) -> timedelta:
         return self.upper_bound - self.lower_bound
 
-    @property
-    def time_played(self) -> timedelta:
-        seconds_played = sum((x.length for x in self.play_sessions),
+    def get_time_played(self, by_user_id=None) -> timedelta:
+        seconds_played = sum((x.length
+                              for x in self.play_sessions
+                              if by_user_id is None or x.user.id == by_user_id),
                              timedelta(days=0)).total_seconds()
         hours_played = floor(seconds_played / (60 * 60))
         minutes_played = floor(seconds_played % (60 * 60) / 60)
@@ -215,6 +221,7 @@ class Week():
                                         end_time=min(self.upper_bound,
                                                      session.end_time))
         self.play_sessions.append(truncated_session)
+        self.user_ids.add(session.user.id)
 
     def add_user_death(self, death: UserDeath) -> None:
         self.user_deaths.append(death)
@@ -273,9 +280,32 @@ class Week():
         stats = drawSvg.Group(
             transform=f"translate({self.width-self.stats_width+5})")
         stats.append(
-            drawSvg.Text(f"Time played: {self.time_played}",
-                         self.stats_font_size, 5,
+            drawSvg.Text(f"Time played:", self.stats_font_size, 5,
                          bracket_height - self.stats_font_size))
+        for i, user_id in enumerate(self.user_ids):
+            stats.append(
+                drawSvg.Rectangle(5,
+                                  bracket_height - self.stats_box_height *
+                                  (i + 2) - self.stats_box_spacing * i,
+                                  self.stats_box_width,
+                                  self.stats_box_height,
+                                  fill=get_color(user_id)))
+            stats.append(
+                drawSvg.Text(
+                    self.get_time_played(user_id), self.stats_font_size, 5,
+                    bracket_height - self.stats_box_height * (i + 2) -
+                    self.stats_box_spacing * i +
+                    (self.stats_box_height - self.stats_font_size) / 2))
+
+        if len(self.user_ids) > 1:
+            stats.append(
+                drawSvg.Text(
+                    "&#931;: " + self.get_time_played(), self.stats_font_size,
+                    5, bracket_height - self.stats_box_height *
+                    (len(self.user_ids) + 2) -
+                    self.stats_box_spacing * len(self.user_ids) +
+                    (self.stats_box_height - self.stats_font_size) / 2))
+
         stats.append(
             drawSvg.Text(f"Villager deaths: {self.villager_deaths_count}",
                          self.stats_font_size, 5, 5))
@@ -366,6 +396,8 @@ if __name__ == "__main__":
                 month.add_death(x)
 
             drawing = month.render()
-            drawing.saveSvg(f"./output/{month.name} {month.year}.svg")
+            with open(f"./output/{month.name} {month.year}.svg",
+                      "w+") as output_file:
+                output_file.write(unescape(drawing.asSvg()))
 
             start_date = start_date.replace(month=start_date.month + 1)
