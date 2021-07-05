@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import json
 
 from death_messages import is_death_message
-from tables import User, UserDeath, VillagerDeath, PlaySession
+from tables import User, UserDeath, VillagerDeath, PlaySession, ChatMessage
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DBSession
@@ -128,10 +128,14 @@ def parse(engine):
                     elif chat_message_match := re.match(r"^<(.*?)> (.*)$",
                                                         message):
                         chatter, chat_message = chat_message_match.group(1, 2)
+                        player = get_user_by_username(chatter, session)
+                        session.add(
+                            ChatMessage(time=timestamp,
+                                        user=player,
+                                        message=chat_message))
                     elif died_message_match := is_death_message(message):
                         dier_username = died_message_match.group(1)
-                        dier_uuid = usernames[dier_username]
-                        dier = get_user_by_uuid(dier_uuid, session)[0]
+                        dier = get_user_by_username(dier_username, session)
                         session.add(
                             UserDeath(time=timestamp,
                                       user=dier,
