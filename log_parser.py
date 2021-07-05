@@ -14,13 +14,31 @@ file_name_parser = re.compile(r"^(\d\d\d\d)-(\d\d)-(\d\d)-\d.log.gz")
 time_parser = re.compile(r"(\d\d):(\d\d):(\d\d)")
 line_parser = re.compile(r"^\[(\d\d:\d\d:\d\d)\] \[(.*?)\]: (.*)$")
 
-open_sessions = {}  # maps usernames to starting times
-usernames = {}  # maps usernames to uuids
+# maps uuids to open session starting times
+open_sessions: dict[str, datetime] = {}
+# maps usernames to uuids. as the parse function proceeds through the log files, this
+# dict is updated to map the most recent username a player was seen with to their
+# uuid
+usernames: dict[str, str] = {}
 
 
-def get_user_by_uuid(uuid, session):
+def get_user_by_uuid(uuid: str, session: DBSession) -> User:
+    """
+    Returns a User object obtained by looking up a Minecraft UUID in the database. If
+    no user object is found, this method returns None.
+    """
     stmt = select(User).where(User.minecraft_uuid == uuid)
-    return session.execute(stmt).first()
+    result = session.execute(stmt).first()
+    return result[0] if result else None
+
+
+def get_user_by_username(username: str, session: DBSession) -> User:
+    """
+    Returns a User object obtained by looking up the Minecraft UUID that is currently
+    associated with a username and then using that UUID to obtain a User object from
+    the database.
+    """
+    return get_user_by_uuid(usernames[username], session)
 
 
 def parse(engine):
@@ -77,10 +95,10 @@ def parse(engine):
                         new_user = User(username=username, minecraft_uuid=uuid)
                         session.add(new_user)
                     else:
-                        if match[0].username != username:
+                        if match.username != username:
                             past_usernames = json.loads(
-                                match[0].past_usernames) + [username]
-                            match[0].past_usernames = json.dumps(past_usernames)
+                                match.past_usernames) + [username]
+                            match.past_usernames = json.dumps(past_usernames)
                 elif source == "Server thread/INFO":
                     if join_message_match := re.match(r"^(.*) joined the game$",
                                                       message):
@@ -88,9 +106,9 @@ def parse(engine):
                         open_sessions[player_uuid] = timestamp
                     elif leave_message_match := re.match(
                             r"^(.*) left the game$", message):
-                        player_id = usernames[leave_message_match.group(1)]
-                        start_time = open_sessions[player_id]
-                        player = get_user_by_uuid(player_id, session)[0]
+                        player_uuid = usernames[leave_message_match.group(1)]
+                        start_time = open_sessions[player_uuid]
+                        player = get_user_by_uuid(player_uuid, session)
                         session.add(
                             PlaySession(start_time=start_time,
                                         end_time=timestamp,
