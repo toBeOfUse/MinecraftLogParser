@@ -65,5 +65,14 @@ class VillagerDeath(BaseTable):
     message = Column(String)
 
 
+class ChatMessage(BaseTable):
+    __tablename__ = "messages"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    time = Column(DateTime, index=True)
+    chatter = Column(Integer, ForeignKey(User.id))
+    user = relationship(User)
+    message = Column(String)
+
+
 engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
 BaseTable.metadata.create_all(engine)
