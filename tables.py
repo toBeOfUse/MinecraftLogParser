@@ -62,6 +62,7 @@ class VillagerDeath(BaseTable):
     time = Column(DateTime, index=True)
     had_profession = Column(Boolean)
     villager_data = Column(String)
+    village_name = Column(String, index=True)
     message = Column(String)
 
 

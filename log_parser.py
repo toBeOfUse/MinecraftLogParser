@@ -6,6 +6,7 @@ import json
 
 from death_messages import is_death_message
 from tables import User, UserDeath, VillagerDeath, PlaySession, ChatMessage
+from villages import village_index
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DBSession
@@ -42,6 +43,7 @@ def get_user_by_username(username: str, session: DBSession) -> User:
 
 
 def parse(engine):
+    unused_lines = []
     log_files = list(
         Path('./logs/').glob("*.log.gz")) + [Path("./logs/latest.log")]
     for file in list(log_files):
@@ -118,12 +120,18 @@ def parse(engine):
                             message):
                         death_data, death_message = villager_died_message_match.group(
                             1, 2)
+                        death_x = re.search(r"x=(-?\d+\.\d+)",
+                                            death_data).group(1)
+                        death_z = re.search(r"z=(-?\d+\.\d+)",
+                                            death_data).group(1)
                         session.add(
                             VillagerDeath(
                                 time=timestamp,
                                 had_profession=(
                                     not death_message.startswith("Villager")),
                                 villager_data=death_data,
+                                village_name=village_index.get_closest_village(
+                                    float(death_x), float(death_z)),
                                 message=death_message))
                     elif chat_message_match := re.match(r"^<(.*?)> (.*)$",
                                                         message):
@@ -140,4 +148,12 @@ def parse(engine):
                             UserDeath(time=timestamp,
                                       user=dier,
                                       message=message))
+                    else:
+                        unused_lines.append((source, message))
                 session.commit()
+    with open("unused.log", "w+") as unused_log:
+        written_messages = set()
+        for unused_line in sorted(unused_lines, key=lambda x: x[1]):
+            if unused_line[1] not in written_messages:
+                written_messages.add(unused_line[1])
+                unused_log.write(str(unused_line) + "\n")
