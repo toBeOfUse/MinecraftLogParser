@@ -13,12 +13,18 @@ from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import or_, and_
 
 import drawSvg
+from webcolors import hex_to_rgb, rgb_to_hex
 
 COLORS = ["#FF9AA2", "#C7CEEA", "#B5EAD7"]
 
 
 def get_color(user_id: int) -> str:
     return COLORS[user_id % len(COLORS)]
+
+
+def get_darker_color(user_id: int) -> str:
+    original_color = hex_to_rgb(get_color(user_id))
+    return rgb_to_hex(tuple(int(x / 2) for x in original_color))
 
 
 def make_ordinal(n: int) -> str:
@@ -240,6 +246,27 @@ class Week():
         timeline_width = self.width - self.stats_width
         day_width = timeline_width / 7
 
+        for i in range(0, 7):
+            day_x_pos = i * day_width
+            date = self.first_date.day + i
+            if date <= self.last_date.day:
+                numberline.append(
+                    drawSvg.Text(
+                        make_ordinal(date),
+                        self.numbers_font_size,
+                        day_x_pos,
+                        (self.numbers_height - self.numbers_font_size) / 2,
+                        fill="black"))
+            if i != 0:
+                timeline.append(
+                    drawSvg.Lines(day_x_pos,
+                                  0,
+                                  day_x_pos,
+                                  bracket_height,
+                                  stroke="black",
+                                  stroke_width=self.line_width / 2,
+                                  stroke_dasharray="5 2"))
+
         sorted_sessions = sorted(self.play_sessions, key=lambda x: x.start_time)
         #  organize sessions into rows by inserting each session into the first row
         #  that doesn't have a session already in it that overlaps it
@@ -264,7 +291,9 @@ class Week():
                                       row_y,
                                       session_width,
                                       self.session_row_height,
-                                      fill=get_color(session.user.id)))
+                                      fill=get_color(session.user.id),
+                                      stroke=get_darker_color(session.user.id),
+                                      strokeWidth="2"))
 
         for death in self.villager_deaths:
             death_x = (death.time -
@@ -309,27 +338,6 @@ class Week():
         stats.append(
             drawSvg.Text(f"Villager deaths: {self.villager_deaths_count}",
                          self.stats_font_size, 5, 5))
-
-        for i in range(0, 7):
-            day_x_pos = i * day_width
-            date = self.first_date.day + i
-            if date <= self.last_date.day:
-                numberline.append(
-                    drawSvg.Text(
-                        make_ordinal(date),
-                        self.numbers_font_size,
-                        day_x_pos,
-                        (self.numbers_height - self.numbers_font_size) / 2,
-                        fill="black"))
-            if i != 0:
-                timeline.append(
-                    drawSvg.Lines(day_x_pos,
-                                  0,
-                                  day_x_pos,
-                                  bracket_height,
-                                  stroke="black",
-                                  stroke_width=self.line_width / 2,
-                                  stroke_dasharray="5 2"))
 
         left_bracket = drawSvg.Path(stroke="black",
                                     stroke_width=self.line_width,
